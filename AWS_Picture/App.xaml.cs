@@ -13,5 +13,6 @@ namespace AWS_Picture
     /// </summary>
     public partial class App : Application
     {
+
     }
 }
