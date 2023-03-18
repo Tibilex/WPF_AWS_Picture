@@ -18,7 +18,6 @@ namespace AWS_Picture.ViewModels
         private OpenFileDialog _openfiledialog;
         private Services _services;
         public Services Services { get; set; }
-        private Image Image;
 
         #endregion
 
@@ -30,14 +29,6 @@ namespace AWS_Picture.ViewModels
         public CommandResult? FacesDetectButton { get; private set; }
 
         #endregion
-
-        public Image ImageSource
-        {
-            get
-            {
-                return Image;
-            }
-        }
 
         public AmazonClientViewModel()
         {

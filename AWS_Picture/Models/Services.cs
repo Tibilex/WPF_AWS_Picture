@@ -11,6 +11,10 @@ using Amazon.S3;
 using AWS_Picture.ViewModels;
 using Amazon.Rekognition.Model;
 using Amazon.Rekognition;
+using System.Net;
+using System.Windows.Documents;
+using Amazon.S3.Transfer;
+using System.Windows.Media.Imaging;
 
 namespace AWS_Picture.Models
 {
@@ -24,6 +28,8 @@ namespace AWS_Picture.Models
         private ListObjectsResponse _listObjectsResponse;
         private List<FaceDetail> _faceDetails;
         private Amazon.S3.Model.S3Object _selectedS3Object;
+        private TransferUtility _fileTransferUtility;
+        private System.Windows.Controls.Image Image;
 
         public ListObjectsResponse ListObjectsResponse
         {
@@ -54,6 +60,15 @@ namespace AWS_Picture.Models
                 OnPropertyChanged("SelectedS3Object");
             }
         }
+        public System.Windows.Controls.Image ImageSource
+        {
+            get => Image;
+            set
+            {
+                Image = value;
+                OnPropertyChanged("ImageSource");
+            }
+        }
         public Services()
         {
             _amazonClientModel = new();
@@ -61,6 +76,8 @@ namespace AWS_Picture.Models
                 _amazonClientModel.Region);
             _rekognitionClient = new AmazonRekognitionClient(_amazonClientModel.GetAccessKey,
                 _amazonClientModel.GetSecretKey,
+                _amazonClientModel.Region);
+            _fileTransferUtility = new TransferUtility(_amazonClientModel.GetAccessKey, _amazonClientModel.GetSecretKey,
                 _amazonClientModel.Region);
         }
         public async void UploadFile()
@@ -138,7 +155,15 @@ namespace AWS_Picture.Models
 
         public void ShowImage()
         {
-        
+            _fileTransferUtility.Download(Environment.CurrentDirectory, _amazonClientModel.GetBucketname, SelectedS3Object.Key);
+            BitmapImage src = new BitmapImage();
+            src.BeginInit();
+            src.UriSource = new Uri(SelectedS3Object.Key, UriKind.Relative);
+            src.CacheOption = BitmapCacheOption.OnLoad;
+            src.EndInit();
+
+            ImageSource = new System.Windows.Controls.Image();
+            ImageSource.Source = src;
         }
     }
 }
