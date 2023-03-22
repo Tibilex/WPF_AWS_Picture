@@ -67,7 +67,6 @@ namespace AWS_Picture.ViewModels
         public void FaceDetect()
         {
             Services.FaceDetect();
-            //Services.ShowImage();
         }
     }
 }

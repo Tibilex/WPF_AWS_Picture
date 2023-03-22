@@ -13,7 +13,7 @@ namespace AWS_Picture.Models
         private const string AccessKey = "AKIATTQYODVYN3CBMGWB";
         private const string SecretKey = "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";
         static Amazon.RegionEndpoint regionEndpoint = Amazon.RegionEndpoint.USEast2;
-        public const string BucketName = "testbucketinstep";
+        public const string BucketName = "istembucket2";
 
         public string GetAccessKey
         {

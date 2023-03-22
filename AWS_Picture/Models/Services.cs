@@ -3,18 +3,18 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using Amazon.S3;
 using AWS_Picture.ViewModels;
 using Amazon.Rekognition.Model;
 using Amazon.Rekognition;
 using System.Net;
-using System.Windows.Documents;
-using Amazon.S3.Transfer;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Amazon.S3.Transfer;
+using System.Drawing;
+using Color = System.Drawing.Color;
+using System.Reflection;
 
 namespace AWS_Picture.Models
 {
@@ -29,7 +29,7 @@ namespace AWS_Picture.Models
         private List<FaceDetail> _faceDetails;
         private Amazon.S3.Model.S3Object _selectedS3Object;
         private TransferUtility _fileTransferUtility;
-        private System.Windows.Controls.Image Image;
+        private System.Windows.Controls.Image _image;
 
         public ListObjectsResponse ListObjectsResponse
         {
@@ -62,13 +62,14 @@ namespace AWS_Picture.Models
         }
         public System.Windows.Controls.Image ImageSource
         {
-            get => Image;
+            get => _image;
             set
             {
-                Image = value;
+                _image = value;
                 OnPropertyChanged("ImageSource");
             }
         }
+
         public Services()
         {
             _amazonClientModel = new();
@@ -80,6 +81,7 @@ namespace AWS_Picture.Models
             _fileTransferUtility = new TransferUtility(_amazonClientModel.GetAccessKey, _amazonClientModel.GetSecretKey,
                 _amazonClientModel.Region);
         }
+
         public async void UploadFile()
         {
             try
@@ -118,7 +120,6 @@ namespace AWS_Picture.Models
             }
         }
 
-
         public async void ShowData()
         {
             try
@@ -146,6 +147,20 @@ namespace AWS_Picture.Models
                 };
                 DetectFacesResponse detectLabelsResponse = await _rekognitionClient.DetectFacesAsync(detectlabelsRequest);
                 FaceDetails = detectLabelsResponse.FaceDetails;
+                using (var client = new WebClient())
+                {
+                    BitmapImage bitmap = ConvertByteToImage(client.DownloadData("https://" + _amazonClientModel.GetBucketname + ".s3.us-east-2.amazonaws.com/" + SelectedS3Object.Key));
+                    System.Windows.Controls.Image img = new();
+                    img.Source = bitmap;
+                    img.Width = bitmap.Width;
+                    img.Height = bitmap.Height;
+                    ImageSource = img;
+
+                    foreach (var item in FaceDetails)
+                    {
+                        Rectangle((double)(item.BoundingBox.Left * img.Width), (double)(item.BoundingBox.Top * img.Height), (int)(item.BoundingBox.Width * img.Width), (int)(item.BoundingBox.Height * img.Height), img);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -153,17 +168,53 @@ namespace AWS_Picture.Models
             }
         }
 
-        public void ShowImage()
+        private BitmapImage ConvertByteToImage(byte[] imgArray)
         {
-            _fileTransferUtility.Download(Environment.CurrentDirectory, _amazonClientModel.GetBucketname, SelectedS3Object.Key);
-            BitmapImage src = new BitmapImage();
-            src.BeginInit();
-            src.UriSource = new Uri(SelectedS3Object.Key, UriKind.Relative);
-            src.CacheOption = BitmapCacheOption.OnLoad;
-            src.EndInit();
+            using (MemoryStream memoryStreams = new MemoryStream(imgArray))
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = memoryStreams;
+                image.EndInit();
+                return image;
+            }
+        }
+        private void Rectangle(double x, double y, int width, int height, System.Windows.Controls.Image img)
+        {
+            try
+            {
 
-            ImageSource = new System.Windows.Controls.Image();
-            ImageSource.Source = src;
+                Rect rect = new Rect(0, 0, img.Width, img.Height);
+                DrawingVisual visual = new DrawingVisual();
+                
+                using (DrawingContext dc = visual.RenderOpen())
+                {
+                    dc.DrawImage(img.Source, rect);
+                    Rect faceRectangle = new Rect(x, y, width + 10, height + 10);
+                    dc.DrawRectangle(null, new Pen(getRandomFrameColor(), 4), faceRectangle);
+                }
+
+                RenderTargetBitmap rtb = new RenderTargetBitmap((int)rect.Width, (int)rect.Height, 96, 96, PixelFormats.Default);
+                rtb.Render(visual);
+                img.Source = rtb;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }
+        }
+
+        private Brush getRandomFrameColor()
+        {
+            Random randomColor = new();
+            Brush result = Brushes.Transparent;
+            Type brushesType = typeof(Brushes);
+            PropertyInfo[] properties = brushesType.GetProperties();
+
+            int random = randomColor.Next(properties.Length);
+            result = (Brush)properties[random].GetValue(null, null);
+            return result;
         }
     }
 }
